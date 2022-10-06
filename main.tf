@@ -1,6 +1,6 @@
 # Create a VPC
 resource "aws_vpc" "isaac_vpc" {
-  cidr_block           = "10.123.0.0/16"
+  cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 
@@ -11,11 +11,21 @@ resource "aws_vpc" "isaac_vpc" {
 
 resource "aws_subnet" "public-subnet" {
   vpc_id                  = aws_vpc.isaac_vpc.id
-  cidr_block              = "10.123.1.0/24"
+  cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
 
   tags = {
     Name = "dev-public"
+  }
+}
+
+resource "aws_subnet" "private-subnet" {
+  vpc_id                  = aws_vpc.isaac_vpc.id
+  cidr_block              = "10.0.2.0/24"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "dev-private"
   }
 }
 
@@ -24,6 +34,14 @@ resource "aws_internet_gateway" "internet-gw" {
 
   tags = {
     Name = "dev-igw"
+  }
+}
+
+resource "aws_nat_gateway" "nat-gw" {
+  subnet_id = aws_subnet.public-subnet.id
+
+  tags = {
+    Name = "gw NAT"
   }
 }
 
@@ -54,7 +72,7 @@ resource "aws_security_group" "security-group" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["205.206.237.141/32"]
+    cidr_blocks = ["0.0.0.0/32"]
   }
 
   egress {
@@ -76,10 +94,10 @@ resource "aws_instance" "dev_node" {
   key_name               = aws_key_pair.terra-auth.id
   vpc_security_group_ids = [aws_security_group.security-group.id]
   subnet_id              = aws_subnet.public-subnet.id
-  user_data = file("userdata.tpl")
+  user_data              = file("userdata.tpl")
 
   root_block_device {
-  volume_size = 10
+    volume_size = 10
   }
 
   tags = {
